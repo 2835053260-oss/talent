@@ -1,0 +1,2054 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>随机歌曲游戏 - 音乐猜谜挑战</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- GSAP 动画库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#a855f7',
+                        accent: '#ec4899',
+                        darkPurple: '#1e1b4b',
+                        neonBlue: '#06b6d4',
+                        neonPink: '#db2777',
+                        neonPurple: '#8b5cf6'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        display: ['Bebas Neue', 'cursive']
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate'
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' }
+                        },
+                        glow: {
+                            '0%': { boxShadow: '0 0 5px rgba(139, 92, 246, 0.5)' },
+                            '100%': { boxShadow: '0 0 20px rgba(139, 92, 246, 0.8), 0 0 30px rgba(139, 92, 246, 0.6)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .text-shadow {
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            }
+            .text-shadow-lg {
+                text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.8);
+            }
+            .neon-text {
+                text-shadow: 0 0 5px currentColor, 0 0 10px currentColor, 0 0 15px currentColor;
+            }
+            .neon-border {
+                box-shadow: 0 0 5px currentColor, 0 0 10px currentColor;
+            }
+            .glass-effect {
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            .vinyl-spin {
+                animation: spin 10s linear infinite;
+            }
+            .music-note {
+                animation: float 3s ease-in-out infinite;
+            }
+            .music-note-delay-1 {
+                animation-delay: 0.5s;
+            }
+            .music-note-delay-2 {
+                animation-delay: 1s;
+            }
+            .progress-bar {
+                transition: width 0.5s ease-in-out;
+            }
+            .lyric-highlight {
+                transition: all 0.3s ease;
+            }
+            .option-hover:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+            }
+        }
+    </style>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+        
+        .bg-image {
+            background-image: url('https://p6-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/641ff0a8ca214b889cda972b0a13c041~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=20260414214323736D798F701884947D0E&rrcfp=f06b921b&x-expires=1778766220&x-signature=B8pFFUcc5jh4WIiZdkQYwXNhrC4%3D');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.6;
+        }
+        
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.9));
+            z-index: -1;
+        }
+        
+        h1, h2, h3, h4 {
+            font-family: 'Bebas Neue', cursive;
+            letter-spacing: 1px;
+        }
+        
+        .vinyl-container {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            margin: 0 auto;
+        }
+        
+        .vinyl {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: radial-gradient(circle at center, #000 40%, #333 41%, #000 42%, #000 45%, #333 46%, #000 47%, #000 50%, #333 51%, #000 52%);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+        
+        .vinyl::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20%;
+            height: 20%;
+            border-radius: 50%;
+            background: radial-gradient(circle at center, #f8fafc, #94a3b8);
+        }
+        
+        .vinyl-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40%;
+            height: 40%;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            z-index: 1;
+        }
+        
+        .music-notes {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .music-note-icon {
+            position: absolute;
+            color: #ec4899;
+            font-size: 2rem;
+            opacity: 0;
+            animation: note-float 3s ease-in-out infinite;
+        }
+        
+        @keyframes note-float {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .equalizer {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            height: 60px;
+            gap: 5px;
+        }
+        
+        .equalizer-bar {
+            width: 8px;
+            background-color: #8b5cf6;
+            border-radius: 4px;
+            animation: equalize 1.2s ease-in-out infinite;
+        }
+        
+        .equalizer-bar:nth-child(1) { animation-delay: 0s; }
+        .equalizer-bar:nth-child(2) { animation-delay: 0.1s; }
+        .equalizer-bar:nth-child(3) { animation-delay: 0.2s; }
+        .equalizer-bar:nth-child(4) { animation-delay: 0.3s; }
+        .equalizer-bar:nth-child(5) { animation-delay: 0.4s; }
+        .equalizer-bar:nth-child(6) { animation-delay: 0.5s; }
+        .equalizer-bar:nth-child(7) { animation-delay: 0.6s; }
+        .equalizer-bar:nth-child(8) { animation-delay: 0.7s; }
+        
+        @keyframes equalize {
+            0%, 100% { height: 10px; }
+            50% { height: 50px; }
+        }
+        
+        .lyrics-container {
+            height: 120px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .lyrics-wrapper {
+            transition: transform 0.5s ease;
+        }
+        
+        .lyric-line {
+            padding: 8px 0;
+            transition: all 0.3s ease;
+        }
+        
+        .lyric-line.active {
+            color: #ec4899;
+            font-size: 1.2rem;
+            font-weight: bold;
+            transform: scale(1.05);
+        }
+        
+        .option-btn {
+            transition: all 0.3s ease;
+        }
+        
+        .option-btn:hover {
+            transform: translateY(-3px);
+        }
+        
+        .option-btn.correct {
+            background-color: #10b981;
+            border-color: #10b981;
+            animation: correct-pulse 0.5s ease;
+        }
+        
+        .option-btn.incorrect {
+            background-color: #ef4444;
+            border-color: #ef4444;
+            animation: incorrect-shake 0.5s ease;
+        }
+        
+        @keyframes correct-pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes incorrect-shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            border-radius: 50%;
+            animation: confetti-fall 3s ease-in-out forwards;
+            z-index: 1000;
+        }
+        
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-10vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            background-color: #1e1b4b;
+            padding: 2rem;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            border: 2px solid #8b5cf6;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+        }
+        
+        .modal.active .modal-content {
+            transform: scale(1);
+        }
+        
+        .volume-control {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 50;
+        }
+        
+        .volume-btn {
+            background-color: rgba(30, 27, 75, 0.8);
+            border: 1px solid #8b5cf6;
+            color: #8b5cf6;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .volume-btn:hover {
+            background-color: rgba(139, 92, 246, 0.2);
+            transform: scale(1.1);
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .vinyl-container {
+                width: 200px;
+                height: 200px;
+            }
+            
+            .game-container {
+                flex-direction: column;
+            }
+            
+            .left-panel, .right-panel {
+                width: 100%;
+                margin-bottom: 1rem;
+            }
+            
+            .options-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- 背景图和遮罩 -->
+    <div class="bg-image"></div>
+    <div class="overlay"></div>
+    
+    <!-- 音量控制 -->
+    <div class="volume-control">
+        <button id="volumeBtn" class="volume-btn">
+            <i class="fa fa-volume-up"></i>
+        </button>
+    </div>
+    
+    <!-- 主容器 -->
+    <div class="container mx-auto px-4 py-8">
+        <!-- 标题 -->
+        <header class="text-center mb-8">
+            <h1 class="text-5xl md:text-6xl font-bold text-white mb-2 text-shadow-lg neon-text">
+                <span class="text-neonPurple">随机歌曲</span>
+                <span class="text-neonPink">游戏</span>
+            </h1>
+            <p class="text-xl text-gray-300">测试你的音乐知识，挑战猜歌极限！</p>
+        </header>
+        
+        <!-- 游戏模式选择 -->
+        <div class="flex justify-center mb-8">
+            <div class="inline-flex rounded-md shadow-sm" role="group">
+                <button id="modeSong" class="game-mode-btn px-6 py-3 text-lg font-medium bg-neonPurple text-white rounded-l-lg hover:bg-purple-600 focus:z-10 focus:ring-2 focus:ring-purple-500 active">
+                    <i class="fa fa-music mr-2"></i>猜歌名
+                </button>
+                <button id="modeSinger" class="game-mode-btn px-6 py-3 text-lg font-medium bg-gray-700 text-white hover:bg-gray-600 focus:z-10 focus:ring-2 focus:ring-purple-500">
+                    <i class="fa fa-user mr-2"></i>猜歌手
+                </button>
+                <button id="modeLyric" class="game-mode-btn px-6 py-3 text-lg font-medium bg-gray-700 text-white rounded-r-lg hover:bg-gray-600 focus:z-10 focus:ring-2 focus:ring-purple-500">
+                    <i class="fa fa-comment mr-2"></i>猜歌词
+                </button>
+            </div>
+        </div>
+        
+        <!-- 游戏区域 -->
+        <div class="game-container flex flex-col md:flex-row gap-6">
+            <!-- 左侧面板 - 游戏区域 -->
+            <div class="left-panel w-full md:w-2/3 glass-effect rounded-xl p-6">
+                <!-- 猜歌名模式 -->
+                <div id="songGame" class="game-mode active">
+                    <div class="text-center mb-6">
+                        <h2 class="text-3xl font-bold text-neonPurple mb-2">猜歌名</h2>
+                        <p class="text-gray-300">聆听歌曲片段，猜测正确的歌曲名称</p>
+                    </div>
+                    
+                    <div class="vinyl-container mb-8">
+                        <div id="vinyl" class="vinyl">
+                            <div class="vinyl-label">
+                                <span id="songDuration">00:00</span>
+                            </div>
+                        </div>
+                        <div class="music-notes" id="musicNotes"></div>
+                    </div>
+                    
+                    <div class="equalizer mb-8">
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                    </div>
+                    
+                    <div class="options-container grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                        <!-- 选项将通过JS动态生成 -->
+                    </div>
+                    
+                    <div class="text-center">
+                        <button id="playSong" class="px-8 py-4 bg-neonPink hover:bg-pink-600 text-white text-xl font-bold rounded-full transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50 shadow-lg">
+                            <i class="fa fa-play-circle mr-2"></i>播放歌曲
+                        </button>
+                        <button id="skipSong" class="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white text-lg font-bold rounded-full transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 shadow-lg mt-4 hidden">
+                            <i class="fa fa-forward mr-2"></i>跳过歌曲
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 猜歌手模式 -->
+                <div id="singerGame" class="game-mode hidden">
+                    <div class="text-center mb-6">
+                        <h2 class="text-3xl font-bold text-neonPurple mb-2">猜歌手</h2>
+                        <p class="text-gray-300">聆听歌曲片段，猜测正确的歌手姓名</p>
+                    </div>
+                    
+                    <div class="vinyl-container mb-8">
+                        <div id="singerVinyl" class="vinyl">
+                            <div class="vinyl-label">
+                                <span id="singerDuration">00:00</span>
+                            </div>
+                        </div>
+                        <div class="music-notes" id="singerMusicNotes"></div>
+                    </div>
+                    
+                    <div class="equalizer mb-8">
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                    </div>
+                    
+                    <div class="options-container grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                        <!-- 选项将通过JS动态生成 -->
+                    </div>
+                    
+                    <div class="text-center">
+                        <button id="playSinger" class="px-8 py-4 bg-neonPink hover:bg-pink-600 text-white text-xl font-bold rounded-full transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50 shadow-lg">
+                            <i class="fa fa-play-circle mr-2"></i>播放歌曲
+                        </button>
+                        <button id="skipSinger" class="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white text-lg font-bold rounded-full transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 shadow-lg mt-4 hidden">
+                            <i class="fa fa-forward mr-2"></i>跳过歌曲
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 猜歌词模式 -->
+                <div id="lyricGame" class="game-mode hidden">
+                    <div class="text-center mb-6">
+                        <h2 class="text-3xl font-bold text-neonPurple mb-2">猜歌词</h2>
+                        <p class="text-gray-300">聆听歌曲片段，填写缺失的歌词</p>
+                    </div>
+                    
+                    <div class="vinyl-container mb-8">
+                        <div id="lyricVinyl" class="vinyl">
+                            <div class="vinyl-label">
+                                <span id="lyricDuration">00:00</span>
+                            </div>
+                        </div>
+                        <div class="music-notes" id="lyricMusicNotes"></div>
+                    </div>
+                    
+                    <div class="equalizer mb-8">
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                        <div class="equalizer-bar"></div>
+                    </div>
+                    
+                    <div class="lyrics-container bg-darkPurple bg-opacity-50 rounded-lg p-4 mb-6">
+                        <div class="lyrics-wrapper" id="lyricsWrapper">
+                            <!-- 歌词将通过JS动态生成 -->
+                        </div>
+                    </div>
+                    
+                    <div class="mb-8">
+                        <div class="flex items-center mb-4">
+                            <input type="text" id="lyricInput" class="flex-1 px-4 py-3 bg-gray-800 text-white rounded-l-lg focus:outline-none focus:ring-2 focus:ring-neonPurple" placeholder="请输入缺失的歌词...">
+                            <button id="submitLyric" class="px-6 py-3 bg-neonPurple text-white rounded-r-lg hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                提交
+                            </button>
+                        </div>
+                        <div id="lyricHint" class="text-center text-gray-400 text-sm">提示：输入正确的歌词，字母大小写不敏感</div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <button id="playLyric" class="px-8 py-4 bg-neonPink hover:bg-pink-600 text-white text-xl font-bold rounded-full transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50 shadow-lg">
+                            <i class="fa fa-play-circle mr-2"></i>播放歌曲
+                        </button>
+                        <button id="skipLyric" class="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white text-lg font-bold rounded-full transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 shadow-lg mt-4 hidden">
+                            <i class="fa fa-forward mr-2"></i>跳过歌曲
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 结果显示区域 -->
+                <div id="resultArea" class="mt-8 p-6 bg-darkPurple rounded-lg hidden">
+                    <h3 class="text-2xl font-bold text-neonPurple mb-4 text-center">答案揭晓</h3>
+                    <div id="resultText" class="text-xl text-center mb-4"></div>
+                    <div id="correctAnswer" class="text-lg text-center text-green-400"></div>
+                </div>
+            </div>
+            
+            <!-- 右侧面板 - 计分板和排行榜 -->
+            <div class="right-panel w-full md:w-1/3 glass-effect rounded-xl p-6">
+                <!-- 当前得分 -->
+                <div class="mb-6">
+                    <h3 class="text-2xl font-bold text-neonPurple mb-4">当前得分</h3>
+                    
+                    <div class="bg-darkPurple bg-opacity-50 rounded-lg p-4 text-center">
+                        <div class="text-5xl font-bold text-white mb-2" id="currentScore">0</div>
+                        <div class="text-gray-400">总分</div>
+                        
+                        <div class="grid grid-cols-3 gap-4 mt-4">
+                            <div class="bg-gray-800 rounded-lg p-3">
+                                <div class="text-xl font-bold text-neonPink" id="correctCount">0</div>
+                                <div class="text-xs text-gray-400">正确</div>
+                            </div>
+                            <div class="bg-gray-800 rounded-lg p-3">
+                                <div class="text-xl font-bold text-neonBlue" id="wrongCount">0</div>
+                                <div class="text-xs text-gray-400">错误</div>
+                            </div>
+                            <div class="bg-gray-800 rounded-lg p-3">
+                                <div class="text-xl font-bold text-neonPurple" id="totalCount">0</div>
+                                <div class="text-xs text-gray-400">总计</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 游戏进度 -->
+                <div class="mb-6">
+                    <h3 class="text-2xl font-bold text-neonPurple mb-4">游戏进度</h3>
+                    
+                    <div class="bg-darkPurple bg-opacity-50 rounded-lg p-4">
+                        <div class="mb-2 flex justify-between">
+                            <span class="text-gray-300">当前关卡：</span>
+                            <span id="currentLevel" class="text-neonPurple font-bold">1</span>
+                        </div>
+                        
+                        <div class="w-full bg-gray-700 rounded-full h-4 mb-4">
+                            <div id="progressBar" class="bg-gradient-to-r from-neonBlue to-neonPink h-4 rounded-full progress-bar" style="width: 0%"></div>
+                        </div>
+                        
+                        <div class="flex justify-between text-xs text-gray-400">
+                            <span>关卡 1</span>
+                            <span>关卡 10</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 排行榜 -->
+                <div class="mb-6">
+                    <h3 class="text-2xl font-bold text-neonPurple mb-4">排行榜</h3>
+                    
+                    <div class="bg-darkPurple bg-opacity-50 rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-bold text-white">最高分</h4>
+                            <button id="resetScore" class="text-xs text-gray-400 hover:text-white">
+                                <i class="fa fa-refresh mr-1"></i> 重置
+                            </button>
+                        </div>
+                        
+                        <div class="space-y-3 max-h-60 overflow-y-auto" id="leaderboard">
+                            <!-- 排行榜将通过JS动态生成 -->
+                            <div class="text-center text-gray-400 py-4">暂无记录</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 统计图表 -->
+                <div>
+                    <h3 class="text-2xl font-bold text-neonPurple mb-4">统计图表</h3>
+                    
+                    <div class="bg-darkPurple bg-opacity-50 rounded-lg p-4">
+                        <canvas id="statsChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 游戏结束模态框 -->
+    <div id="gameOverModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold text-neonPurple">游戏结束</h3>
+                <button id="closeGameOverModal" class="text-gray-400 hover:text-white">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="text-center mb-6">
+                <div class="text-5xl font-bold text-white mb-2" id="finalScore">0</div>
+                <div class="text-gray-300">最终得分</div>
+                
+                <div class="grid grid-cols-3 gap-4 mt-4 mb-6">
+                    <div class="bg-gray-800 rounded-lg p-3">
+                        <div class="text-xl font-bold text-neonPink" id="finalCorrect">0</div>
+                        <div class="text-xs text-gray-400">正确</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg p-3">
+                        <div class="text-xl font-bold text-neonBlue" id="finalWrong">0</div>
+                        <div class="text-xs text-gray-400">错误</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg p-3">
+                        <div class="text-xl font-bold text-neonPurple" id="finalAccuracy">0%</div>
+                        <div class="text-xs text-gray-400">正确率</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-gray-300 mb-2">输入你的名字：</label>
+                <input type="text" id="playerName" class="w-full px-4 py-2 bg-gray-800 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-neonPurple" placeholder="输入你的名字...">
+            </div>
+            
+            <div class="flex justify-center">
+                <button id="playAgain" class="px-8 py-3 bg-neonPink hover:bg-pink-600 text-white text-lg font-bold rounded-full transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50 shadow-lg">
+                    <i class="fa fa-refresh mr-2"></i>再玩一次
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 游戏说明模态框 -->
+    <div id="gameRulesModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold text-neonPurple">游戏说明</h3>
+                <button id="closeRulesModal" class="text-gray-400 hover:text-white">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <h4 class="text-xl font-bold text-white mb-2">猜歌名模式</h4>
+                    <p class="text-gray-300">聆听歌曲片段，从四个选项中选择正确的歌曲名称。每首歌播放30秒，猜对得10分，猜错不扣分。</p>
+                </div>
+                
+                <div>
+                    <h4 class="text-xl font-bold text-white mb-2">猜歌手模式</h4>
+                    <p class="text-gray-300">聆听歌曲片段，从四个选项中选择正确的歌手姓名。每首歌播放30秒，猜对得10分，猜错不扣分。</p>
+                </div>
+                
+                <div>
+                    <h4 class="text-xl font-bold text-white mb-2">猜歌词模式</h4>
+                    <p class="text-gray-300">聆听歌曲片段，根据上下文填写缺失的歌词。每首歌播放30秒，填写正确得10分，猜错不扣分。</p>
+                </div>
+                
+                <div>
+                    <h4 class="text-xl font-bold text-white mb-2">游戏规则</h4>
+                    <p class="text-gray-300">每轮游戏包含10首随机歌曲，完成后显示最终得分和排行榜。可以随时跳过当前歌曲，但会被计为错误。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 底部导航 -->
+    <footer class="fixed bottom-0 left-0 right-0 bg-darkPurple bg-opacity-80 py-3 px-4 border-t border-neonPurple">
+        <div class="container mx-auto flex justify-between items-center">
+            <button id="showRules" class="text-neonPurple hover:text-purple-400 transition-colors">
+                <i class="fa fa-question-circle mr-1"></i> 游戏说明
+            </button>
+            
+            <div class="text-center">
+                <p class="text-gray-400 text-sm">享受音乐，挑战自我</p>
+            </div>
+            
+            <div class="flex items-center">
+                <span class="text-gray-400 mr-2">当前模式：</span>
+                <span id="currentMode" class="text-neonPurple font-bold">猜歌名</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // 歌曲数据库
+        const songsDatabase = [
+            // 2025年热门歌曲
+            {
+                id: 1,
+                title: "世界赠予我的",
+                artist: "王菲",
+                year: 2025,
+                lyrics: [
+                    "世界赠予我虫鸣也赠予我雷霆",
+                    "赠予我破晓也赠予我黄昏",
+                    "赠予我相聚也赠予我分离",
+                    "赠予我失去也赠予我珍惜",
+                    "世界赠予我欢笑也赠予我哭泣",
+                    "赠予我希望也赠予我叹息",
+                    "赠予我光明也赠予我阴影",
+                    "赠予我开始也赠予我结局"
+                ],
+                previewUrl: "https://example.com/song1.mp3"
+            },
+            {
+                id: 2,
+                title: "Star Crossing Night",
+                artist: "徐明浩 / GALI",
+                year: 2025,
+                lyrics: [
+                    "Star crossing night, we're dancing in the sky",
+                    "流星划过的夜晚，我们在天空中舞蹈",
+                    "Star crossing night, you're the light in my eyes",
+                    "流星划过的夜晚，你是我眼中的光芒",
+                    "Star crossing night, we'll never say goodbye",
+                    "流星划过的夜晚，我们永不道别",
+                    "Star crossing night, you're the reason I fly",
+                    "流星划过的夜晚，你是我飞翔的理由"
+                ],
+                previewUrl: "https://example.com/song2.mp3"
+            },
+            {
+                id: 3,
+                title: "大城小爱",
+                artist: "梓渝",
+                year: 2025,
+                lyrics: [
+                    "在这大大的城市里，有个小小的我和你",
+                    "虽然生活很拥挤，却能找到彼此的天地",
+                    "在这大大的城市里，有份小小的爱情",
+                    "不需要太多言语，一个眼神就有默契",
+                    "大城小爱，简单的依赖",
+                    "每一个清晨，有你在醒来",
+                    "大城小爱，平凡的精彩",
+                    "每一个黄昏，有你在等待"
+                ],
+                previewUrl: "https://example.com/song3.mp3"
+            },
+            {
+                id: 4,
+                title: "Deadman",
+                artist: "蔡徐坤",
+                year: 2025,
+                lyrics: [
+                    "I'm just a deadman walking through this world",
+                    "我只是一个在这世界上游走的死人",
+                    "No one can hear me, no one can see",
+                    "没有人能听到我，没有人能看到",
+                    "I'm just a deadman, living in the dark",
+                    "我只是一个死人，生活在黑暗中",
+                    "Waiting for someone to wake me up",
+                    "等待着有人来唤醒我"
+                ],
+                previewUrl: "https://example.com/song4.mp3"
+            },
+            {
+                id: 5,
+                title: "莫愁乡",
+                artist: "亞細亞曠世奇才",
+                year: 2025,
+                lyrics: [
+                    "莫愁乡，莫愁乡，梦里回到的地方",
+                    "那里有我的童年，有我最纯真的梦想",
+                    "莫愁乡，莫愁乡，心中不变的方向",
+                    "无论走得多远，你都是我思念的地方",
+                    "莫愁乡，莫愁乡，岁月带不走的香",
+                    "那是妈妈的饭菜香，是爸爸的老酒坊",
+                    "莫愁乡，莫愁乡，永远的避风港",
+                    "无论在外多迷茫，你都是我回家的方向"
+                ],
+                previewUrl: "https://example.com/song5.mp3"
+            },
+            {
+                id: 6,
+                title: "像晴天像雨天",
+                artist: "汪苏泷",
+                year: 2025,
+                lyrics: [
+                    "有时候爱情像晴天，阳光明媚很耀眼",
+                    "有时候爱情像雨天，乌云密布很灰暗",
+                    "但无论是晴天还是雨天，我都愿陪在你身边",
+                    "一起看彩虹出现，一起等雨过天晴",
+                    "像晴天像雨天，都是我们的时间",
+                    "像晴天像雨天，都是爱情的考验",
+                    "像晴天像雨天，我们一起走过的每一天",
+                    "都是生命中最美好的画面"
+                ],
+                previewUrl: "https://example.com/song6.mp3"
+            },
+            {
+                id: 7,
+                title: "珠玉",
+                artist: "单依纯",
+                year: 2025,
+                lyrics: [
+                    "你是我生命中的珠玉，闪耀着迷人的光芒",
+                    "在我最黑暗的时刻，给我希望和力量",
+                    "你是我生命中的珠玉，珍贵而不可替代",
+                    "每一个清晨醒来，都因你而感到温暖",
+                    "珠玉般的你，珠玉般的爱情",
+                    "在岁月的长河中，永远不会褪色的美丽",
+                    "珠玉般的你，珠玉般的心灵",
+                    "是我此生最珍贵的宝贝"
+                ],
+                previewUrl: "https://example.com/song7.mp3"
+            },
+            {
+                id: 8,
+                title: "跳楼机",
+                artist: "LBI 利比",
+                year: 2025,
+                lyrics: [
+                    "我好像一束极光守在世界尽头",
+                    "等待着你的出现，给我瞬间的温柔",
+                    "就像跳楼机一样，心情起伏跌宕",
+                    "从最高处落下，又从最低处升起",
+                    "爱情就像跳楼机，让人又爱又怕",
+                    "但我愿意为你，勇敢地尝试每一次",
+                    "爱情就像跳楼机，有起有落才精彩",
+                    "和你一起经历，就是最美好的未来"
+                ],
+                previewUrl: "https://example.com/song8.mp3"
+            },
+            {
+                id: 9,
+                title: "消散对白",
+                artist: "丁禹兮",
+                year: 2025,
+                lyrics: [
+                    "回忆像困兽在心底游走",
+                    "那些曾经的对白，如今只剩沉默",
+                    "消散的对白，消散的爱情",
+                    "只剩下我一个人，在回忆中徘徊",
+                    "消散的对白，消散的温柔",
+                    "时间带走了一切，却带不走我的思念",
+                    "消散的对白，消散的承诺",
+                    "我还在原地等待，等待你回来的那天"
+                ],
+                previewUrl: "https://example.com/song9.mp3"
+            },
+            {
+                id: 10,
+                title: "心似烟火",
+                artist: "王木木",
+                year: 2025,
+                lyrics: [
+                    "我看着你背影想开口，心似烟火燃烧",
+                    "却说不出一句话，只能看着你远走",
+                    "心似烟火，绚烂却短暂",
+                    "像我们的爱情，美丽却无法长久",
+                    "心似烟火，照亮了黑夜",
+                    "却照不亮我们之间的距离",
+                    "心似烟火，随风飘散",
+                    "只剩下我一个人，在回忆中取暖"
+                ],
+                previewUrl: "https://example.com/song10.mp3"
+            },
+            
+            // 经典老歌
+            {
+                id: 11,
+                title: "甜蜜蜜",
+                artist: "邓丽君",
+                year: 1979,
+                lyrics: [
+                    "甜蜜蜜，你笑得甜蜜蜜",
+                    "好像花儿开在春风里",
+                    "开在春风里",
+                    "在哪里，在哪里见过你",
+                    "你的笑容这样熟悉",
+                    "我一时想不起",
+                    "啊，在梦里",
+                    "梦里，梦里见过你"
+                ],
+                previewUrl: "https://example.com/song11.mp3"
+            },
+            {
+                id: 12,
+                title: "吻别",
+                artist: "张学友",
+                year: 1993,
+                lyrics: [
+                    "前尘往事成云烟，消散在彼此眼前",
+                    "就连说过了再见，也看不见你有些哀怨",
+                    "给我的一切，你不过是在敷衍",
+                    "你笑得越无邪，我就会爱你爱得更狂野",
+                    "总在刹那间，有一些了解",
+                    "说过的话不可能会实现",
+                    "就在一转眼，发现你的脸",
+                    "已经陌生不会再像从前"
+                ],
+                previewUrl: "https://example.com/song12.mp3"
+            },
+            {
+                id: 13,
+                title: "海阔天空",
+                artist: "Beyond",
+                year: 1993,
+                lyrics: [
+                    "今天我，寒夜里看雪飘过",
+                    "怀着冷却了的心窝漂远方",
+                    "风雨里追赶，雾里分不清影踪",
+                    "天空海阔你与我，可会变",
+                    "多少次，迎着冷眼与嘲笑",
+                    "从没有放弃过心中的理想",
+                    "一刹那恍惚，若有所失的感觉",
+                    "不知不觉已变淡，心里爱"
+                ],
+                previewUrl: "https://example.com/song13.mp3"
+            },
+            {
+                id: 14,
+                title: "后来",
+                artist: "刘若英",
+                year: 2000,
+                lyrics: [
+                    "后来，我总算学会了如何去爱",
+                    "可惜你早已远去，消失在人海",
+                    "后来，终于在眼泪中明白",
+                    "有些人，一旦错过就不再",
+                    "栀子花，白花瓣，落在我蓝色百褶裙上",
+                    "爱你，你轻声说，我低下头，闻见一阵芬芳",
+                    "那个永恒的夜晚，十七岁仲夏，你吻我的那个夜晚",
+                    "让我往后的时光，每当有感叹，总想起当天的星光"
+                ],
+                previewUrl: "https://example.com/song14.mp3"
+            },
+            {
+                id: 15,
+                title: "青花瓷",
+                artist: "周杰伦",
+                year: 2007,
+                lyrics: [
+                    "素胚勾勒出青花笔锋浓转淡",
+                    "瓶身描绘的牡丹一如你初妆",
+                    "冉冉檀香透过窗心事我了然",
+                    "宣纸上走笔至此搁一半",
+                    "釉色渲染仕女图韵味被私藏",
+                    "而你嫣然的一笑如含苞待放",
+                    "你的美一缕飘散，去到我去不了的地方",
+                    "天青色等烟雨，而我在等你"
+                ],
+                previewUrl: "https://example.com/song15.mp3"
+            }
+        ];
+        
+        // 全局变量
+        let currentGameMode = 'song';
+        let isPlaying = false;
+        let currentSong = null;
+        let currentLevel = 1;
+        let score = 0;
+        let correctCount = 0;
+        let wrongCount = 0;
+        let totalCount = 0;
+        let gameStartTime = null;
+        let gameTimer = null;
+        let songTimer = null;
+        let songPlayTime = 0;
+        let maxSongTime = 30; // 每首歌播放30秒
+        let leaderboard = [];
+        let volumeOn = true;
+        let statsChart = null;
+        let usedSongIds = []; // 已使用的歌曲ID
+        
+        // DOM 元素
+        const elements = {
+            // 游戏模式按钮
+            modeSong: document.getElementById('modeSong'),
+            modeSinger: document.getElementById('modeSinger'),
+            modeLyric: document.getElementById('modeLyric'),
+            
+            // 游戏区域
+            songGame: document.getElementById('songGame'),
+            singerGame: document.getElementById('singerGame'),
+            lyricGame: document.getElementById('lyricGame'),
+            
+            // 游戏控制
+            playSong: document.getElementById('playSong'),
+            skipSong: document.getElementById('skipSong'),
+            playSinger: document.getElementById('playSinger'),
+            skipSinger: document.getElementById('skipSinger'),
+            playLyric: document.getElementById('playLyric'),
+            skipLyric: document.getElementById('skipLyric'),
+            submitLyric: document.getElementById('submitLyric'),
+            lyricInput: document.getElementById('lyricInput'),
+            
+            // 结果区域
+            resultArea: document.getElementById('resultArea'),
+            resultText: document.getElementById('resultText'),
+            correctAnswer: document.getElementById('correctAnswer'),
+            
+            // 计分板
+            currentScore: document.getElementById('currentScore'),
+            correctCount: document.getElementById('correctCount'),
+            wrongCount: document.getElementById('wrongCount'),
+            totalCount: document.getElementById('totalCount'),
+            currentLevel: document.getElementById('currentLevel'),
+            progressBar: document.getElementById('progressBar'),
+            currentMode: document.getElementById('currentMode'),
+            
+            // 排行榜
+            leaderboard: document.getElementById('leaderboard'),
+            resetScore: document.getElementById('resetScore'),
+            
+            // 模态框
+            gameOverModal: document.getElementById('gameOverModal'),
+            closeGameOverModal: document.getElementById('closeGameOverModal'),
+            playerName: document.getElementById('playerName'),
+            playAgain: document.getElementById('playAgain'),
+            finalScore: document.getElementById('finalScore'),
+            finalCorrect: document.getElementById('finalCorrect'),
+            finalWrong: document.getElementById('finalWrong'),
+            finalAccuracy: document.getElementById('finalAccuracy'),
+            
+            gameRulesModal: document.getElementById('gameRulesModal'),
+            showRules: document.getElementById('showRules'),
+            closeRulesModal: document.getElementById('closeRulesModal'),
+            
+            // 音量控制
+            volumeBtn: document.getElementById('volumeBtn'),
+            
+            // 进度显示
+            songDuration: document.getElementById('songDuration'),
+            singerDuration: document.getElementById('singerDuration'),
+            lyricDuration: document.getElementById('lyricDuration'),
+            
+            // 唱片和音符
+            vinyl: document.getElementById('vinyl'),
+            singerVinyl: document.getElementById('singerVinyl'),
+            lyricVinyl: document.getElementById('lyricVinyl'),
+            musicNotes: document.getElementById('musicNotes'),
+            singerMusicNotes: document.getElementById('singerMusicNotes'),
+            lyricMusicNotes: document.getElementById('lyricMusicNotes'),
+            
+            // 歌词
+            lyricsWrapper: document.getElementById('lyricsWrapper'),
+            lyricHint: document.getElementById('lyricHint')
+        };
+        
+        // 初始化
+        function init() {
+            // 加载排行榜数据
+            loadLeaderboard();
+            
+            // 绑定事件
+            bindEvents();
+            
+            // 初始化图表
+            initChart();
+            
+            // 更新UI
+            updateScoreboard();
+            updateProgressBar();
+            updateLeaderboard();
+        }
+        
+        // 绑定事件
+        function bindEvents() {
+            // 游戏模式切换
+            elements.modeSong.addEventListener('click', () => switchGameMode('song'));
+            elements.modeSinger.addEventListener('click', () => switchGameMode('singer'));
+            elements.modeLyric.addEventListener('click', () => switchGameMode('lyric'));
+            
+            // 游戏控制
+            elements.playSong.addEventListener('click', startSongGame);
+            elements.skipSong.addEventListener('click', skipSong);
+            elements.playSinger.addEventListener('click', startSingerGame);
+            elements.skipSinger.addEventListener('click', skipSong);
+            elements.playLyric.addEventListener('click', startLyricGame);
+            elements.skipLyric.addEventListener('click', skipSong);
+            elements.submitLyric.addEventListener('click', checkLyricAnswer);
+            elements.lyricInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') checkLyricAnswer();
+            });
+            
+            // 重置分数
+            elements.resetScore.addEventListener('click', resetScore);
+            
+            // 模态框
+            elements.closeGameOverModal.addEventListener('click', closeGameOverModal);
+            elements.playAgain.addEventListener('click', playAgain);
+            elements.showRules.addEventListener('click', showGameRules);
+            elements.closeRulesModal.addEventListener('click', closeGameRules);
+            
+            // 音量控制
+            elements.volumeBtn.addEventListener('click', toggleVolume);
+            
+            // 点击模态框外部关闭
+            elements.gameOverModal.addEventListener('click', (e) => {
+                if (e.target === elements.gameOverModal) closeGameOverModal();
+            });
+            elements.gameRulesModal.addEventListener('click', (e) => {
+                if (e.target === elements.gameRulesModal) closeGameRules();
+            });
+        }
+        
+        // 初始化图表
+        function initChart() {
+            const ctx = document.getElementById('statsChart').getContext('2d');
+            statsChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['正确', '错误'],
+                    datasets: [{
+                        data: [0, 0],
+                        backgroundColor: [
+                            '#ec4899',
+                            '#06b6d4'
+                        ],
+                        borderColor: [
+                            '#be185d',
+                            '#0891b2'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#f8fafc',
+                                font: {
+                                    family: 'Inter',
+                                    size: 12
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 更新图表
+        function updateChart() {
+            statsChart.data.datasets[0].data = [correctCount, wrongCount];
+            statsChart.update();
+        }
+        
+        // 切换游戏模式
+        function switchGameMode(mode) {
+            // 如果游戏正在进行中，不允许切换模式
+            if (isPlaying) {
+                alert('游戏正在进行中，请等待当前歌曲结束后再切换模式');
+                return;
+            }
+            
+            currentGameMode = mode;
+            
+            // 更新按钮样式
+            elements.modeSong.classList.remove('bg-neonPurple');
+            elements.modeSong.classList.add('bg-gray-700');
+            elements.modeSinger.classList.remove('bg-neonPurple');
+            elements.modeSinger.classList.add('bg-gray-700');
+            elements.modeLyric.classList.remove('bg-neonPurple');
+            elements.modeLyric.classList.add('bg-gray-700');
+            
+            // 隐藏所有游戏区域
+            elements.songGame.classList.add('hidden');
+            elements.singerGame.classList.add('hidden');
+            elements.lyricGame.classList.add('hidden');
+            
+            // 根据选择的模式显示对应的游戏区域
+            switch (mode) {
+                case 'song':
+                    elements.modeSong.classList.remove('bg-gray-700');
+                    elements.modeSong.classList.add('bg-neonPurple');
+                    elements.songGame.classList.remove('hidden');
+                    elements.currentMode.textContent = '猜歌名';
+                    break;
+                case 'singer':
+                    elements.modeSinger.classList.remove('bg-gray-700');
+                    elements.modeSinger.classList.add('bg-neonPurple');
+                    elements.singerGame.classList.remove('hidden');
+                    elements.currentMode.textContent = '猜歌手';
+                    break;
+                case 'lyric':
+                    elements.modeLyric.classList.remove('bg-gray-700');
+                    elements.modeLyric.classList.add('bg-neonPurple');
+                    elements.lyricGame.classList.remove('hidden');
+                    elements.currentMode.textContent = '猜歌词';
+                    break;
+            }
+            
+            // 隐藏结果区域
+            elements.resultArea.classList.add('hidden');
+        }
+        
+        // 开始猜歌名游戏
+        function startSongGame() {
+            if (isPlaying) return;
+            
+            // 隐藏结果区域
+            elements.resultArea.classList.add('hidden');
+            
+            // 获取随机歌曲
+            currentSong = getRandomSong();
+            
+            // 生成选项
+            generateSongOptions(currentSong);
+            
+            // 开始播放歌曲
+            startPlaying('song');
+        }
+        
+        // 开始猜歌手游戏
+        function startSingerGame() {
+            if (isPlaying) return;
+            
+            // 隐藏结果区域
+            elements.resultArea.classList.add('hidden');
+            
+            // 获取随机歌曲
+            currentSong = getRandomSong();
+            
+            // 生成选项
+            generateSingerOptions(currentSong);
+            
+            // 开始播放歌曲
+            startPlaying('singer');
+        }
+        
+        // 开始猜歌词游戏
+        function startLyricGame() {
+            if (isPlaying) return;
+            
+            // 隐藏结果区域
+            elements.resultArea.classList.add('hidden');
+            
+            // 获取随机歌曲
+            currentSong = getRandomSong();
+            
+            // 生成歌词
+            generateLyrics(currentSong);
+            
+            // 开始播放歌曲
+            startPlaying('lyric');
+        }
+        
+        // 获取随机歌曲
+        function getRandomSong() {
+            // 如果所有歌曲都已使用，则重置已使用列表
+            if (usedSongIds.length >= songsDatabase.length) {
+                usedSongIds = [];
+            }
+            
+            // 从未使用的歌曲中随机选择
+            let availableSongs = songsDatabase.filter(song => !usedSongIds.includes(song.id));
+            let randomIndex = Math.floor(Math.random() * availableSongs.length);
+            let selectedSong = availableSongs[randomIndex];
+            
+            // 添加到已使用列表
+            usedSongIds.push(selectedSong.id);
+            
+            return selectedSong;
+        }
+        
+        // 生成猜歌名选项
+        function generateSongOptions(song) {
+            // 获取当前模式的选项容器
+            const container = elements.songGame.querySelector('.options-container');
+            container.innerHTML = '';
+            
+            // 添加正确答案
+            let options = [song.title];
+            
+            // 添加3个干扰选项（不同的歌曲名）
+            let otherSongs = songsDatabase.filter(s => s.id !== song.id);
+            for (let i = 0; i < 3; i++) {
+                let randomIndex = Math.floor(Math.random() * otherSongs.length);
+                options.push(otherSongs[randomIndex].title);
+                // 从候选池中移除已选的歌曲，避免重复
+                otherSongs.splice(randomIndex, 1);
+            }
+            
+            // 打乱选项顺序
+            options = shuffleArray(options);
+            
+            // 创建选项按钮
+            options.forEach(option => {
+                const button = document.createElement('button');
+                button.className = 'option-btn px-4 py-3 bg-darkPurple border-2 border-neonPurple text-white rounded-lg hover:bg-purple-900 transition-all duration-300 option-hover';
+                button.textContent = option;
+                button.dataset.answer = option;
+                
+                // 添加点击事件
+                button.addEventListener('click', () => checkSongAnswer(option, song.title));
+                
+                container.appendChild(button);
+            });
+        }
+        
+        // 生成猜歌手选项
+        function generateSingerOptions(song) {
+            // 获取当前模式的选项容器
+            const container = elements.singerGame.querySelector('.options-container');
+            container.innerHTML = '';
+            
+            // 添加正确答案
+            let options = [song.artist];
+            
+            // 添加3个干扰选项（不同的歌手名）
+            let otherSongs = songsDatabase.filter(s => s.id !== song.id);
+            for (let i = 0; i < 3; i++) {
+                let randomIndex = Math.floor(Math.random() * otherSongs.length);
+                options.push(otherSongs[randomIndex].artist);
+                // 从候选池中移除已选的歌曲，避免重复
+                otherSongs.splice(randomIndex, 1);
+            }
+            
+            // 打乱选项顺序
+            options = shuffleArray(options);
+            
+            // 创建选项按钮
+            options.forEach(option => {
+                const button = document.createElement('button');
+                button.className = 'option-btn px-4 py-3 bg-darkPurple border-2 border-neonPurple text-white rounded-lg hover:bg-purple-900 transition-all duration-300 option-hover';
+                button.textContent = option;
+                button.dataset.answer = option;
+                
+                // 添加点击事件
+                button.addEventListener('click', () => checkSingerAnswer(option, song.artist));
+                
+                container.appendChild(button);
+            });
+        }
+        
+        // 生成歌词
+        function generateLyrics(song) {
+            // 清空歌词容器
+            elements.lyricsWrapper.innerHTML = '';
+            
+            // 随机选择一句歌词作为填空
+            const blankIndex = Math.floor(Math.random() * song.lyrics.length);
+            
+            // 创建歌词行
+            song.lyrics.forEach((line, index) => {
+                const lyricLine = document.createElement('div');
+                lyricLine.className = 'lyric-line text-center';
+                
+                if (index === blankIndex) {
+                    // 这是要填空的行
+                    lyricLine.innerHTML = '<span class="text-neonPink font-bold">___________</span>';
+                    lyricLine.classList.add('active');
+                    // 存储正确答案
+                    lyricLine.dataset.correct = line;
+                } else {
+                    // 普通歌词行
+                    lyricLine.textContent = line;
+                }
+                
+                elements.lyricsWrapper.appendChild(lyricLine);
+            });
+            
+            // 滚动到活动行
+            const activeLine = elements.lyricsWrapper.querySelector('.lyric-line.active');
+            if (activeLine) {
+                const containerHeight = elements.lyricsWrapper.parentElement.clientHeight;
+                const lineTop = activeLine.offsetTop;
+                elements.lyricsWrapper.style.transform = `translateY(${(containerHeight / 2) - lineTop}px)`;
+            }
+            
+            // 清空输入框
+            elements.lyricInput.value = '';
+            elements.lyricInput.disabled = false;
+            elements.submitLyric.disabled = false;
+            elements.lyricHint.textContent = '提示：输入正确的歌词，字母大小写不敏感';
+        }
+        
+        // 开始播放歌曲
+        function startPlaying(mode) {
+            isPlaying = true;
+            
+            // 更新按钮状态
+            switch (mode) {
+                case 'song':
+                    elements.playSong.disabled = true;
+                    elements.playSong.classList.add('opacity-50');
+                    elements.skipSong.classList.remove('hidden');
+                    break;
+                case 'singer':
+                    elements.playSinger.disabled = true;
+                    elements.playSinger.classList.add('opacity-50');
+                    elements.skipSinger.classList.remove('hidden');
+                    break;
+                case 'lyric':
+                    elements.playLyric.disabled = true;
+                    elements.playLyric.classList.add('opacity-50');
+                    elements.skipLyric.classList.remove('hidden');
+                    elements.lyricInput.disabled = false;
+                    elements.submitLyric.disabled = false;
+                    break;
+            }
+            
+            // 开始唱片旋转动画
+            let vinyl;
+            let musicNotes;
+            let durationElement;
+            
+            switch (mode) {
+                case 'song':
+                    vinyl = elements.vinyl;
+                    musicNotes = elements.musicNotes;
+                    durationElement = elements.songDuration;
+                    break;
+                case 'singer':
+                    vinyl = elements.singerVinyl;
+                    musicNotes = elements.singerMusicNotes;
+                    durationElement = elements.singerDuration;
+                    break;
+                case 'lyric':
+                    vinyl = elements.lyricVinyl;
+                    musicNotes = elements.lyricMusicNotes;
+                    durationElement = elements.lyricDuration;
+                    break;
+            }
+            
+            vinyl.classList.add('vinyl-spin');
+            
+            // 创建音乐音符动画
+            createMusicNotes(musicNotes);
+            
+            // 重置歌曲播放时间
+            songPlayTime = 0;
+            durationElement.textContent = formatTime(songPlayTime);
+            
+            // 开始计时器
+            songTimer = setInterval(() => {
+                songPlayTime++;
+                durationElement.textContent = formatTime(songPlayTime);
+                
+                // 更新歌词高亮
+                if (mode === 'lyric') {
+                    updateLyricHighlight();
+                }
+                
+                // 如果播放时间达到最大时间，自动结束
+                if (songPlayTime >= maxSongTime) {
+                    endPlaying(mode, false);
+                }
+            }, 1000);
+            
+            // 模拟播放歌曲（实际项目中这里会调用音频API）
+            console.log(`播放歌曲: ${currentSong.title} - ${currentSong.artist}`);
+        }
+        
+        // 结束播放
+        function endPlaying(mode, answered = false) {
+            isPlaying = false;
+            
+            // 清除计时器
+            clearInterval(songTimer);
+            
+            // 停止唱片旋转动画
+            let vinyl;
+            let musicNotes;
+            
+            switch (mode) {
+                case 'song':
+                    vinyl = elements.vinyl;
+                    musicNotes = elements.musicNotes;
+                    elements.playSong.disabled = false;
+                    elements.playSong.classList.remove('opacity-50');
+                    elements.skipSong.classList.add('hidden');
+                    break;
+                case 'singer':
+                    vinyl = elements.singerVinyl;
+                    musicNotes = elements.singerMusicNotes;
+                    elements.playSinger.disabled = false;
+                    elements.playSinger.classList.remove('opacity-50');
+                    elements.skipSinger.classList.add('hidden');
+                    break;
+                case 'lyric':
+                    vinyl = elements.lyricVinyl;
+                    musicNotes = elements.lyricMusicNotes;
+                    elements.playLyric.disabled = false;
+                    elements.playLyric.classList.remove('opacity-50');
+                    elements.skipLyric.classList.add('hidden');
+                    elements.lyricInput.disabled = true;
+                    elements.submitLyric.disabled = true;
+                    break;
+            }
+            
+            vinyl.classList.remove('vinyl-spin');
+            
+            // 清除音乐音符
+            musicNotes.innerHTML = '';
+            
+            // 如果没有回答，显示正确答案
+            if (!answered) {
+                showCorrectAnswer(mode);
+            }
+            
+            // 更新游戏进度
+            updateGameProgress();
+        }
+        
+        // 跳过歌曲
+        function skipSong() {
+            switch (currentGameMode) {
+                case 'song':
+                    endPlaying('song');
+                    break;
+                case 'singer':
+                    endPlaying('singer');
+                    break;
+                case 'lyric':
+                    endPlaying('lyric');
+                    break;
+            }
+        }
+        
+        // 检查猜歌名答案
+        function checkSongAnswer(selected, correct) {
+            if (!isPlaying) return;
+            
+            // 禁用所有选项按钮
+            const buttons = elements.songGame.querySelectorAll('.option-btn');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('opacity-75');
+            });
+            
+            // 标记正确和错误的选项
+            buttons.forEach(btn => {
+                if (btn.dataset.answer === correct) {
+                    btn.classList.add('correct');
+                } else if (btn.dataset.answer === selected) {
+                    btn.classList.add('incorrect');
+                }
+            });
+            
+            // 判断答案是否正确
+            const isCorrect = selected === correct;
+            
+            // 更新分数
+            updateScore(isCorrect);
+            
+            // 显示结果
+            showResult(isCorrect, selected, correct, '歌曲名称');
+            
+            // 结束播放
+            endPlaying('song', true);
+        }
+        
+        // 检查猜歌手答案
+        function checkSingerAnswer(selected, correct) {
+            if (!isPlaying) return;
+            
+            // 禁用所有选项按钮
+            const buttons = elements.singerGame.querySelectorAll('.option-btn');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('opacity-75');
+            });
+            
+            // 标记正确和错误的选项
+            buttons.forEach(btn => {
+                if (btn.dataset.answer === correct) {
+                    btn.classList.add('correct');
+                } else if (btn.dataset.answer === selected) {
+                    btn.classList.add('incorrect');
+                }
+            });
+            
+            // 判断答案是否正确
+            const isCorrect = selected === correct;
+            
+            // 更新分数
+            updateScore(isCorrect);
+            
+            // 显示结果
+            showResult(isCorrect, selected, correct, '歌手姓名');
+            
+            // 结束播放
+            endPlaying('singer', true);
+        }
+        
+        // 检查猜歌词答案
+        function checkLyricAnswer() {
+            if (!isPlaying) return;
+            
+            const input = elements.lyricInput.value.trim();
+            const activeLine = elements.lyricsWrapper.querySelector('.lyric-line.active');
+            const correct = activeLine.dataset.correct;
+            
+            // 禁用输入框和提交按钮
+            elements.lyricInput.disabled = true;
+            elements.submitLyric.disabled = true;
+            
+            // 判断答案是否正确（不区分大小写和前后空格）
+            const isCorrect = input.toLowerCase() === correct.toLowerCase();
+            
+            // 更新分数
+            updateScore(isCorrect);
+            
+            // 显示结果
+            showResult(isCorrect, input, correct, '歌词');
+            
+            // 高亮显示正确歌词
+            activeLine.innerHTML = `<span class="${isCorrect ? 'text-green-400' : 'text-red-400'} font-bold">${correct}</span>`;
+            
+            // 结束播放
+            endPlaying('lyric', true);
+        }
+        
+        // 更新歌词高亮
+        function updateLyricHighlight() {
+            // 简单的模拟，实际项目中应该根据歌曲播放进度来更新
+            const lines = elements.lyricsWrapper.querySelectorAll('.lyric-line');
+            const activeLine = elements.lyricsWrapper.querySelector('.lyric-line.active');
+            
+            // 随机高亮其他行，模拟歌词滚动效果
+            if (Math.random() > 0.7) {
+                lines.forEach(line => {
+                    if (line !== activeLine) {
+                        line.classList.remove('active');
+                    }
+                });
+                
+                const randomIndex = Math.floor(Math.random() * lines.length);
+                if (lines[randomIndex] !== activeLine) {
+                    lines[randomIndex].classList.add('active');
+                }
+            }
+        }
+        
+        // 显示结果
+        function showResult(isCorrect, selected, correct, type) {
+            elements.resultArea.classList.remove('hidden');
+            
+            if (isCorrect) {
+                elements.resultText.textContent = `恭喜！你答对了${type}！`;
+                elements.resultText.className = 'text-xl text-center mb-4 text-green-400';
+                elements.correctAnswer.textContent = `"${correct}" 是正确答案`;
+                elements.correctAnswer.className = 'text-lg text-center text-green-400';
+                
+                // 创建庆祝效果
+                createConfetti();
+            } else {
+                elements.resultText.textContent = `很遗憾，你答错了${type！}`;
+                elements.resultText.className = 'text-xl text-center mb-4 text-red-400';
+                elements.correctAnswer.textContent = `正确答案是："${correct}"`;
+                elements.correctAnswer.className = 'text-lg text-center text-yellow-400';
+            }
+        }
+        
+        // 显示正确答案（用于超时或跳过）
+        function showCorrectAnswer(mode) {
+            elements.resultArea.classList.remove('hidden');
+            
+            let correct, type;
+            
+            switch (mode) {
+                case 'song':
+                    correct = currentSong.title;
+                    type = '歌曲名称';
+                    break;
+                case 'singer':
+                    correct = currentSong.artist;
+                    type = '歌手姓名';
+                    break;
+                case 'lyric':
+                    const activeLine = elements.lyricsWrapper.querySelector('.lyric-line.active');
+                    correct = activeLine.dataset.correct;
+                    type = '歌词';
+                    activeLine.innerHTML = `<span class="text-yellow-400 font-bold">${correct}</span>`;
+                    break;
+            }
+            
+            elements.resultText.textContent = `时间到！你没有回答${type}。`;
+            elements.resultText.className = 'text-xl text-center mb-4 text-yellow-400';
+            elements.correctAnswer.textContent = `正确答案是："${correct}"`;
+            elements.correctAnswer.className = 'text-lg text-center text-yellow-400';
+            
+            // 更新分数（错误）
+            updateScore(false);
+        }
+        
+        // 更新分数
+        function updateScore(isCorrect) {
+            totalCount++;
+            
+            if (isCorrect) {
+                score += 10;
+                correctCount++;
+            } else {
+                wrongCount++;
+            }
+            
+            // 更新计分板
+            updateScoreboard();
+            
+            // 更新图表
+            updateChart();
+        }
+        
+        // 更新计分板
+        function updateScoreboard() {
+            elements.currentScore.textContent = score;
+            elements.correctCount.textContent = correctCount;
+            elements.wrongCount.textContent = wrongCount;
+            elements.totalCount.textContent = totalCount;
+        }
+        
+        // 更新游戏进度
+        function updateGameProgress() {
+            currentLevel++;
+            
+            // 如果达到10关，游戏结束
+            if (currentLevel > 10) {
+                endGame();
+                return;
+            }
+            
+            // 更新关卡显示
+            elements.currentLevel.textContent = currentLevel;
+            
+            // 更新进度条
+            updateProgressBar();
+        }
+        
+        // 更新进度条
+        function updateProgressBar() {
+            const progress = ((currentLevel - 1) / 10) * 100;
+            elements.progressBar.style.width = `${progress}%`;
+        }
+        
+        // 结束游戏
+        function endGame() {
+            // 计算正确率
+            const accuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+            
+            // 更新最终得分显示
+            elements.finalScore.textContent = score;
+            elements.finalCorrect.textContent = correctCount;
+            elements.finalWrong.textContent = wrongCount;
+            elements.finalAccuracy.textContent = `${accuracy}%`;
+            
+            // 显示游戏结束模态框
+            elements.gameOverModal.classList.add('active');
+        }
+        
+        // 关闭游戏结束模态框
+        function closeGameOverModal() {
+            elements.gameOverModal.classList.remove('active');
+        }
+        
+        // 再玩一次
+        function playAgain() {
+            // 保存分数到排行榜
+            saveScore();
+            
+            // 重置游戏状态
+            resetGame();
+            
+            // 关闭模态框
+            closeGameOverModal();
+        }
+        
+        // 重置游戏
+        function resetGame() {
+            currentLevel = 1;
+            score = 0;
+            correctCount = 0;
+            wrongCount = 0;
+            totalCount = 0;
+            usedSongIds = [];
+            
+            // 更新UI
+            elements.currentLevel.textContent = currentLevel;
+            updateProgressBar();
+            updateScoreboard();
+            updateChart();
+            
+            // 隐藏结果区域
+            elements.resultArea.classList.add('hidden');
+        }
+        
+        // 重置分数
+        function resetScore() {
+            if (confirm('确定要重置所有分数记录吗？')) {
+                localStorage.removeItem('musicGameLeaderboard');
+                leaderboard = [];
+                updateLeaderboard();
+            }
+        }
+        
+        // 保存分数到排行榜
+        function saveScore() {
+            let playerName = elements.playerName.value.trim() || '匿名玩家';
+            
+            // 创建新的分数记录
+            const scoreRecord = {
+                name: playerName,
+                score: score,
+                correct: correctCount,
+                wrong: wrongCount,
+                total: totalCount,
+                accuracy: Math.round((correctCount / totalCount) * 100),
+                date: new Date().toLocaleDateString()
+            };
+            
+            // 添加到排行榜
+            leaderboard.push(scoreRecord);
+            
+            // 按分数排序
+            leaderboard.sort((a, b) => b.score - a.score);
+            
+            // 只保留前10名
+            leaderboard = leaderboard.slice(0, 10);
+            
+            // 保存到本地存储
+            localStorage.setItem('musicGameLeaderboard', JSON.stringify(leaderboard));
+            
+            // 更新排行榜显示
+            updateLeaderboard();
+        }
+        
+        // 加载排行榜数据
+        function loadLeaderboard() {
+            const saved = localStorage.getItem('musicGameLeaderboard');
+            if (saved) {
+                leaderboard = JSON.parse(saved);
+            }
+        }
+        
+        // 更新排行榜显示
+        function updateLeaderboard() {
+            const container = elements.leaderboard;
+            container.innerHTML = '';
+            
+            if (leaderboard.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 py-4">暂无记录</div>';
+                return;
+            }
+            
+            // 创建排行榜表格
+            const table = document.createElement('table');
+            table.className = 'w-full text-sm';
+            
+            // 表头
+            const thead = document.createElement('thead');
+            thead.innerHTML = `
+                <tr class="border-b border-gray-700">
+                    <th class="py-2 text-left">排名</th>
+                    <th class="py-2 text-left">玩家</th>
+                    <th class="py-2 text-right">分数</th>
+                </tr>
+            `;
+            table.appendChild(thead);
+            
+            // 表体
+            const tbody = document.createElement('tbody');
+            
+            leaderboard.forEach((record, index) => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-gray-800 hover:bg-gray-800';
+                
+                // 排名（前三名有特殊样式）
+                let rankClass = '';
+                if (index === 0) rankClass = 'text-yellow-400 font-bold';
+                else if (index === 1) rankClass = 'text-gray-300 font-bold';
+                else if (index === 2) rankClass = 'text-amber-700 font-bold';
+                
+                tr.innerHTML = `
+                    <td class="py-2 ${rankClass}">#${index + 1}</td>
+                    <td class="py-2">${record.name}</td>
+                    <td class="py-2 text-right font-bold">${record.score}</td>
+                `;
+                
+                tbody.appendChild(tr);
+            });
+            
+            table.appendChild(tbody);
+            container.appendChild(table);
+        }
+        
+        // 显示游戏规则
+        function showGameRules() {
+            elements.gameRulesModal.classList.add('active');
+        }
+        
+        // 关闭游戏规则
+        function closeGameRules() {
+            elements.gameRulesModal.classList.remove('active');
+        }
+        
+        // 切换音量
+        function toggleVolume() {
+            volumeOn = !volumeOn;
+            
+            if (volumeOn) {
+                elements.volumeBtn.innerHTML = '<i class="fa fa-volume-up"></i>';
+            } else {
+                elements.volumeBtn.innerHTML = '<i class="fa fa-volume-off"></i>';
+            }
+        }
+        
+        // 创建音乐音符动画
+        function createMusicNotes(container) {
+            container.innerHTML = '';
+            
+            // 创建10个音符
+            for (let i = 0; i < 10; i++) {
+                const note = document.createElement('div');
+                note.className = 'music-note-icon';
+                note.innerHTML = '<i class="fa fa-music"></i>';
+                
+                // 随机位置
+                const left = Math.random() * 100;
+                const top = Math.random() * 100;
+                
+                note.style.left = `${left}%`;
+                note.style.top = `${top}%`;
+                
+                // 随机延迟和颜色
+                const delay = Math.random() * 3;
+                const colors = ['#ec4899', '#8b5cf6', '#06b6d4'];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                
+                note.style.animationDelay = `${delay}s`;
+                note.style.color = color;
+                
+                container.appendChild(note);
+            }
+        }
+        
+        // 创建庆祝效果
+        function createConfetti() {
+            const colors = ['#ec4899', '#8b5cf6', '#06b6d4', '#eab308', '#22c55e'];
+            
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.left = `${Math.random() * 100}%`;
+                confetti.style.animationDuration = `${Math.random() * 3 + 2}s`;
+                confetti.style.animationDelay = `${Math.random() * 2}s`;
+                
+                document.body.appendChild(confetti);
+                
+                // 动画结束后移除元素
+                confetti.addEventListener('animationend', () => {
+                    confetti.remove();
+                });
+            }
+        }
+        
+        // 格式化时间
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        // 数组洗牌
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
